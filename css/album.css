@@ -1,0 +1,24 @@
+/* 1회차 「낡은 사진첩」 — 바랜 종이, 사진 모서리 테이프, 손글씨 메모 */
+body.theme-album {
+  --bg: #E4E1DB; --ink: #2B2B2B; --ink-2: #4A4A4A; --paper: #F4F2ED; --slip: #F1EFEA;
+  --line: #5A5A5A; --rule: #6E6E6E; --btn-bg: #2B2B2B; --btn-ink: #F1EFEA;
+  --font: 'Gowun Batang', serif;
+  --grain-op: .22; --grain-blend: multiply; --vignette: inset 0 0 180px rgba(0,0,0,.28);
+  --tilt: -2deg;
+}
+
+/* 사진 모서리 테이프 */
+.theme-album .corner { position: absolute; width: 0; height: 0; }
+.theme-album .corner.tl { left: 4px; top: 4px; border-top: 26px solid #3A3A3A; border-right: 26px solid transparent; }
+.theme-album .corner.tr { right: 4px; top: 4px; border-top: 26px solid #3A3A3A; border-left: 26px solid transparent; }
+.theme-album .corner.bl { left: 4px; bottom: 4px; border-bottom: 26px solid #3A3A3A; border-right: 26px solid transparent; }
+.theme-album .corner.br { right: 4px; bottom: 4px; border-bottom: 26px solid #3A3A3A; border-left: 26px solid transparent; }
+
+/* 선택지는 종이쪽지처럼 살짝 비뚤게 */
+.theme-album .actions .slip:nth-child(odd) { transform: rotate(-.4deg); }
+.theme-album .actions .slip:nth-child(even) { transform: rotate(.3deg); }
+.theme-album .actions .slip:hover:not(:disabled) { transform: rotate(0) translateY(-1px); }
+
+@media (max-width: 820px) {
+  .theme-album .corner.tl, .theme-album .corner.tr, .theme-album .corner.bl, .theme-album .corner.br { border-width: 18px; }
+}
