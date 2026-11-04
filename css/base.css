@@ -8,6 +8,8 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; min-height: 100%; }
+/* 폰에서 누를 때 화면이 번쩍이는 기본 강조 효과 끄기 */
+html { -webkit-tap-highlight-color: transparent; }
 body {
   background: var(--bg); color: var(--ink); font-family: var(--font);
   font-size: 17px; line-height: 1.75; word-break: keep-all;
@@ -145,6 +147,11 @@ button:disabled { cursor: not-allowed; }
   line-height: 34px; font-size: 26px; font-family: var(--pen); color: var(--ink); padding: 0 6px;
 }
 .note { margin: 0; font-size: 14px; color: var(--ink-2); }
+.q-hint { margin: 0 0 4px; font-size: 14px; color: var(--ink-2); }
+.q-hint::before { content: "생각 도움말 · "; font-weight: 700; }
+.q-count { margin: 2px 0 0; text-align: right; font-size: 13px; color: var(--ink-2); }
+.q-count.ok { color: var(--ink); font-weight: 700; }
+.q-count.ok::before { content: "✓ "; }
 
 /* 제출 후 */
 .closing { min-height: 60vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; text-align: center; }
@@ -160,22 +167,33 @@ button:disabled { cursor: not-allowed; }
 .hub-num { font-size: 14px; color: var(--ink-2); }
 .hub-card .stamp { position: absolute; right: 16px; top: 14px; }
 
-/* 엔딩 크레딧 (회차 공통) */
-.credits { position: fixed; inset: 0; z-index: 95; background: #151515; color: #ECEAE5; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px; cursor: pointer; }
-.credits-box { max-width: 760px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; opacity: 0; }
-.credits-box.in { animation: creditIn .9s ease forwards; }
-@keyframes creditIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+/* 엔딩 크레딧 (회차 공통) — 눈이 편하도록 순한 검정과 회백색, 부드러운 전환 */
+.credits {
+  position: fixed; inset: 0; z-index: 95; background: #161616; color: #D9D6D0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 24px;
+  cursor: pointer; -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  animation: creditsOpen .6s ease; transition: opacity .35s ease;
+}
+.credits.closing { opacity: 0; }
+@keyframes creditsOpen { from { opacity: 0; } to { opacity: 1; } }
+.credits-box { max-width: 760px; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 18px; opacity: 0; transition: opacity .3s ease; }
+.credits-box.in { animation: creditIn .8s ease forwards; }
+.credits-box.out { opacity: 0; }
+@keyframes creditIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 .credits-line { margin: 0; font-size: 24px; line-height: 1.85; word-break: keep-all; }
-.credits-box.is-q .credits-line { font-family: var(--pen); font-size: 42px; line-height: 1.4; color: #FFFFFF; }
-.credits-box.is-title .credits-line { font-size: 36px; font-weight: 700; letter-spacing: .06em; }
-.credits-img { width: min(620px, 86vw); aspect-ratio: 16 / 9; object-fit: cover; filter: grayscale(1) contrast(1.05); opacity: .85; }
-.credits-hint { position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); margin: 0; font-size: 14px; color: #8C8A85; }
+.credits-box.is-q .credits-line { font-family: var(--pen); font-size: 42px; line-height: 1.4; color: #E9E6E1; }
+.credits-box.is-title .credits-line { font-size: 34px; font-weight: 700; letter-spacing: .06em; color: #E9E6E1; }
+.credits-img { width: min(620px, 86vw); aspect-ratio: 16 / 9; object-fit: cover; filter: grayscale(1) brightness(.85); opacity: .8; }
+.credits-hint { position: absolute; bottom: calc(28px + env(safe-area-inset-bottom, 0px)); margin: 0; font-size: 14px; color: #77746F; }
 @media (max-width: 820px) {
   .credits-line { font-size: 19px; }
   .credits-box.is-q .credits-line { font-size: 32px; }
-  .credits-box.is-title .credits-line { font-size: 28px; }
+  .credits-box.is-title .credits-line { font-size: 27px; }
 }
-@media (prefers-reduced-motion: reduce) { .credits-box.in { animation: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .credits, .credits-box { animation: none; transition: none; }
+  .credits-box.in { animation: none; opacity: 1; }
+}
 
 /* 로딩·알림·창 */
 .loading { position: fixed; inset: 0; background: rgba(30,30,30,.35); display: flex; align-items: center; justify-content: center; z-index: 100; }
