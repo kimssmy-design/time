@@ -663,26 +663,243 @@ var Ep2 = (function () {
   }
 
   function reflect(code, title, bs) {
-    var paras = eulogyBody(code).concat(['마지막 밤, 낯선 사람이 작은 약병을 내밀었다. "이걸 드시면, 죽지 않습니다."']);
-    var chips = [st.card + ' 카드', st.treat ? '치료 받음' : '치료 안 받음']
-      .concat(topUsed(2).map(function (t) { return t.a.name + ' ' + t.n + '번'; }))
-      .concat(bs.map(function (b) { return (b.done ? '☑ ' : '□ ') + b.text; }));
+    // 둘러보기 모드는 기록하지 않으므로 기존 안내 화면 사용
+    if (ctx.explore) {
+      Reflect.show({ ctx: ctx, ep: 2, topTitle: TITLE, ending: { code: code, title: title, paras: eulogyBody(code), chips: [] }, questions: [], fields: {} });
+      return;
+    }
+    realNote(code, title, bs);
+  }
+
+  // ───── 나의 진짜 수첩 (게임 속 나 → 현실의 나) ─────
+  function realNote(code, title, bs) {
+    UI.setTop(TITLE, '마지막 장 · 나의 진짜 수첩');
+    var s = UI.clear();
     var c = st.counts;
-    Reflect.show({
-      ctx: ctx, ep: 2, topTitle: TITLE,
-      ending: { code: code, title: title, paras: paras, chips: chips },
-      questions: ['내 수첩을 다시 보면, 나는 무엇을 가장 소중히 여긴 사람이었나?', '카드가 없는 지금, 내 하루는 무엇으로 채우고 있나?'],
-      fields: {
+    var rank = [], bucket = [], scale = 0, pickedBucket = -1;
+
+    var wrap = UI.el('section', 'real-note');
+    wrap.appendChild(UI.el('div', 'rn-head',
+      '<span class="stamp">' + code + '</span><div><h1 class="rn-title">이제, 게임 밖의 내 수첩을 펼쳐 보자</h1>' +
+      '<p class="pen rn-sub">카드는 없지만, 나에게도 남은 시간이 있다.</p></div>'));
+    var grid = UI.el('div', 'rn-grid');
+
+    // ── 1. 나의 우선순위
+    var s1 = UI.el('div', 'rn-card');
+    s1.appendChild(UI.el('h2', 'rn-h', '1. 나의 우선순위'));
+    var game = UI.el('div', 'rn-block');
+    game.appendChild(UI.el('p', 'rn-label', '① 게임 속 나 <span>— ' + st.slots.length + '번의 일정 중 마음을 쏟은 곳</span>'));
+    CATS.forEach(function (k) {
+      game.appendChild(UI.el('div', 'rn-bar', '<span>' + k + '</span><span class="bar"><span style="width:' + Math.round(c[k] * 100 / st.slots.length) + '%"></span></span><span class="num">' + c[k] + '번</span>'));
+    });
+    s1.appendChild(game);
+
+    var real = UI.el('div', 'rn-block');
+    real.appendChild(UI.el('p', 'rn-label', '② 현실의 나 <span>— 소중한 순서대로 눌러요 (다시 누르면 취소)</span>'));
+    var rankRow = UI.el('div', 'rank-row');
+    var compare = UI.el('p', 'pen rn-compare');
+    var gameTop = CATS.slice().sort(function (a, b) { return c[b] - c[a]; })[0];
+    CATS.forEach(function (k) {
+      var b = UI.el('button', 'rank-btn', k);
+      b.type = 'button';
+      b.addEventListener('click', function () {
+        var i = rank.indexOf(k);
+        if (i >= 0) rank.splice(i, 1); else rank.push(k);
+        Array.prototype.forEach.call(rankRow.children, function (x) {
+          var n = rank.indexOf(x.dataset.k);
+          x.classList.toggle('on', n >= 0);
+          x.dataset.n = n >= 0 ? n + 1 : '';
+        });
+        compare.textContent = !rank.length ? '' : (rank[0] === gameTop
+          ? '게임에서는 \'' + gameTop + '\'에 가장 많이 썼고, 현실의 1순위도 \'' + rank[0] + '\'이다.'
+          : '게임에서는 \'' + gameTop + '\'에 가장 많이 썼는데, 현실의 1순위는 \'' + rank[0] + '\'이다.');
+      });
+      b.dataset.k = k;
+      rankRow.appendChild(b);
+    });
+    real.appendChild(rankRow);
+    real.appendChild(compare);
+    s1.appendChild(real);
+
+    var bk = UI.el('div', 'rn-block');
+    bk.appendChild(UI.el('p', 'rn-label', '③ 진짜 버킷리스트 <span>— 5개 (더 쓰고 싶으면 10개까지)</span>'));
+    var list = UI.el('div', 'rn-list');
+    var more = UI.el('button', 'rn-more', '+ 하나 더 쓰기');
+    more.type = 'button';
+    function addRow() {
+      var r = { text: '', cat: '' };
+      bucket.push(r);
+      var row = UI.el('div', 'rn-row');
+      var inp = document.createElement('input');
+      inp.className = 'line-input rn-input';
+      inp.maxLength = 40;
+      inp.placeholder = '예: 해 보고 싶은 일';
+      inp.setAttribute('aria-label', '버킷리스트 ' + bucket.length);
+      inp.addEventListener('input', function () { r.text = inp.value.trim(); drawChips(); });
+      var cats = UI.el('div', 'cat-pick');
+      CATS.forEach(function (k) {
+        var cb = UI.el('button', 'cat-btn', k);
+        cb.type = 'button';
+        cb.addEventListener('click', function () {
+          r.cat = k;
+          Array.prototype.forEach.call(cats.children, function (x) { x.classList.toggle('on', x === cb); });
+        });
+        cats.appendChild(cb);
+      });
+      row.appendChild(UI.el('span', 'pen bucket-num', bucket.length + '.'));
+      row.appendChild(inp);
+      row.appendChild(cats);
+      list.appendChild(row);
+      if (bucket.length >= 10) more.hidden = true;
+    }
+    for (var i = 0; i < 5; i++) addRow();
+    more.addEventListener('click', function () { addRow(); list.lastChild.querySelector('input').focus(); });
+    bk.appendChild(list);
+    bk.appendChild(more);
+    s1.appendChild(bk);
+
+    var th = UI.el('div', 'rn-block');
+    th.appendChild(UI.el('p', 'rn-label', '④ 게임 속 나와 현실의 나는 무엇이 같고, 무엇이 달랐나?'));
+    var thought = document.createElement('textarea');
+    thought.className = 'lined rn-thought';
+    thought.maxLength = 500;
+    thought.setAttribute('aria-label', '게임 속 나와 현실의 나 비교');
+    var thCnt = UI.el('p', 'q-count', '0자 / 30자 이상');
+    thought.addEventListener('input', function () {
+      var n = thought.value.trim().length;
+      thCnt.textContent = n + '자 / 30자 이상';
+      thCnt.classList.toggle('ok', n >= 30);
+    });
+    th.appendChild(thought);
+    th.appendChild(thCnt);
+    s1.appendChild(th);
+
+    // ── 2. 지금의 행복
+    var s2 = UI.el('div', 'rn-card');
+    s2.appendChild(UI.el('h2', 'rn-h', '2. 지금의 행복'));
+    var hp = UI.el('div', 'rn-block');
+    hp.appendChild(UI.el('p', 'rn-label', '① 요즘 나는 얼마나 행복한가?'));
+    var sc = UI.el('div', 'scale-row');
+    for (var n = 1; n <= 10; n++) {
+      (function (n) {
+        var b = UI.el('button', 'scale-btn', String(n));
+        b.type = 'button';
+        b.setAttribute('aria-label', '행복 ' + n + '점');
+        b.addEventListener('click', function () {
+          scale = n;
+          Array.prototype.forEach.call(sc.children, function (x) { x.classList.toggle('on', x === b); });
+        });
+        sc.appendChild(b);
+      })(n);
+    }
+    hp.appendChild(sc);
+    hp.appendChild(UI.el('div', 'scale-ends', '<span>전혀 행복하지 않다</span><span>아주 행복하다</span>'));
+    hp.appendChild(UI.el('p', 'note', '이 점수는 선생님만 볼 수 있어요.'));
+    s2.appendChild(hp);
+
+    var ty = UI.el('div', 'rn-block');
+    ty.appendChild(UI.el('p', 'rn-label', '② 요즘 감사한 것 세 가지'));
+    var thanks = [];
+    for (var t = 0; t < 3; t++) {
+      var row = UI.el('div', 'rn-row simple');
+      var inp = document.createElement('input');
+      inp.className = 'line-input rn-input';
+      inp.maxLength = 50;
+      inp.setAttribute('aria-label', '감사한 것 ' + (t + 1));
+      row.appendChild(UI.el('span', 'pen bucket-num', (t + 1) + '.'));
+      row.appendChild(inp);
+      ty.appendChild(row);
+      thanks.push(inp);
+    }
+    s2.appendChild(ty);
+
+    var td = UI.el('div', 'rn-block');
+    td.appendChild(UI.el('p', 'rn-label', '③ 오늘 당장 할 수 있는 버킷리스트 하나'));
+    td.appendChild(UI.el('p', 'note', '위에 쓴 버킷리스트에서 하나를 고르거나, 새로 써도 돼요.'));
+    var chips = UI.el('div', 'rn-chips');
+    td.appendChild(chips);
+    var todo = {};
+    ['무엇을', '언제', '누구와'].forEach(function (k) {
+      var row = UI.el('div', 'rn-row todo');
+      var inp = document.createElement('input');
+      inp.className = 'line-input rn-input';
+      inp.maxLength = 50;
+      inp.setAttribute('aria-label', '오늘 할 일 ' + k);
+      row.appendChild(UI.el('span', 'todo-k', k));
+      row.appendChild(inp);
+      td.appendChild(row);
+      todo[k] = inp;
+    });
+    function drawChips() {
+      chips.innerHTML = '';
+      bucket.forEach(function (r, i) {
+        if (r.text.length < 2) return;
+        var b = UI.el('button', 'rn-chip' + (pickedBucket === i ? ' on' : ''), UI.esc(r.text));
+        b.type = 'button';
+        b.addEventListener('click', function () {
+          pickedBucket = i;
+          if (!todo['무엇을'].value.trim()) todo['무엇을'].value = r.text;
+          drawChips();
+        });
+        chips.appendChild(b);
+      });
+      var nb = UI.el('button', 'rn-chip new', '+ 새로 쓰기');
+      nb.type = 'button';
+      nb.addEventListener('click', function () { pickedBucket = -1; todo['무엇을'].value = ''; todo['무엇을'].focus(); drawChips(); });
+      chips.appendChild(nb);
+    }
+    drawChips();
+    s2.appendChild(td);
+
+    var msg = UI.el('div', 'form-msg');
+    msg.setAttribute('role', 'alert');
+    var go = UI.el('button', 'btn-main', '수첩 덮기 · 제출');
+    go.type = 'button';
+    s2.appendChild(msg);
+    s2.appendChild(go);
+
+    grid.appendChild(s1);
+    grid.appendChild(s2);
+    wrap.appendChild(grid);
+    s.appendChild(wrap);
+
+    function fail(text, el) {
+      msg.textContent = text;
+      if (el) { el.scrollIntoView({ block: 'center', behavior: 'smooth' }); if (el.focus) el.focus(); }
+    }
+    go.addEventListener('click', function () {
+      if (rank.length < 4) return fail('② 현실의 나: 네 영역을 모두 눌러 순위를 정해 주세요.', rankRow);
+      var filled = bucket.filter(function (r) { return r.text.length >= 2; });
+      if (filled.length < 5) {
+        var empty = list.querySelectorAll('input')[bucket.findIndex(function (r) { return r.text.length < 2; })];
+        return fail('③ 버킷리스트를 5개 이상 써 주세요. (지금 ' + filled.length + '개)', empty);
+      }
+      var noCat = bucket.findIndex(function (r) { return r.text.length >= 2 && !r.cat; });
+      if (noCat >= 0) return fail('③ ' + (noCat + 1) + '번 버킷리스트의 영역(가족·일·꿈·휴식)을 골라 주세요.', list.children[noCat]);
+      if (thought.value.trim().length < 30) return fail('④ 게임 속 나와 현실의 나 비교를 30자 이상 써 주세요.', thought);
+      if (!scale) return fail('2-① 요즘의 행복 점수를 골라 주세요.', sc);
+      for (var i = 0; i < 3; i++) if (thanks[i].value.trim().length < 2) return fail('2-② 감사한 것 세 가지를 모두 써 주세요.', thanks[i]);
+      var keys = ['무엇을', '언제', '누구와'];
+      for (var j = 0; j < 3; j++) if (todo[keys[j]].value.trim().length < 1) return fail('2-③ 오늘 할 일의 \'' + keys[j] + '\'를 써 주세요.', todo[keys[j]]);
+      msg.textContent = '';
+
+      var c2 = st.counts;
+      var fields = {
         '결말': code + ' ' + title,
         '카드': st.card,
         '치료': (st.treat ? '받음' : '안 받음') + ' / 고백:' + st.tell,
-        // 시트 열 이름은 그대로(나 = 휴식)
-        '가족': String(c.가족), '일': String(c.일), '꿈': String(c.꿈), '나': String(c.휴식),
+        '가족': String(c2.가족), '일': String(c2.일), '꿈': String(c2.꿈), '나': String(c2.휴식),
         '버킷리스트': bs.map(function (b) { return b.text + '[' + b.cat + ']' + (b.done ? '✓' : '✗'); }).join(' | '),
-        '사건1': st.ev.e1 || '', '사건2': st.ev.e2 || '', '사건3': st.ev.e3 || ''
-      },
-      submitLabel: '수첩 덮기 · 제출',
-      closing: '그 약병은, 아직 머리맡에 놓여 있다.'
+        '사건1': st.ev.e1 || '', '사건2': st.ev.e2 || '', '사건3': st.ev.e3 || '',
+        // 소감 칸 두 개에 정리해서 기록 (GAS 수정 없음)
+        '소감1': '현실 순위: ' + rank.join('>') +
+          ' | 진짜 버킷: ' + filled.map(function (r, i) { return (i + 1) + ') ' + r.text + '[' + (r.cat || '-') + ']'; }).join(' ') +
+          ' | 생각: ' + thought.value.trim(),
+        '소감2': '행복: ' + scale + '/10' +
+          ' | 감사: ' + thanks.map(function (x) { return x.value.trim(); }).join('; ') +
+          ' | 오늘 할 일: ' + keys.map(function (k) { return k + '=' + todo[k].value.trim(); }).join('; ')
+      };
+      Reflect.send({ ctx: ctx, ep: 2, topTitle: TITLE, closing: '그 약병은, 아직 머리맡에 놓여 있다.' }, fields, go, msg);
     });
   }
 

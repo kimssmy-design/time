@@ -33,11 +33,23 @@ var Reflect = (function () {
       back.addEventListener('click', function () { o.ctx.onFinish(false); });
       form.appendChild(back);
     } else {
-      o.questions.forEach(function (q, i) {
+      var MIN = o.minLen || 50;
+      o.questions.forEach(function (item, i) {
+        // 질문은 '문장' 또는 { q: 질문, hint: 생각 도움말 }
+        var q = typeof item === 'string' ? item : item.q;
+        var hint = typeof item === 'string' ? '' : (item.hint || '');
         var f = UI.el('div', 'q');
         f.innerHTML = '<label class="q-label" for="rq' + i + '">' + (i + 1) + '. ' + q + '</label>' +
-          '<textarea id="rq' + i + '" class="lined" maxlength="600"></textarea>';
+          (hint ? '<p class="q-hint">' + hint + '</p>' : '') +
+          '<textarea id="rq' + i + '" class="lined" maxlength="800"></textarea>' +
+          '<p class="q-count" id="rc' + i + '">0자 / ' + MIN + '자 이상</p>';
         form.appendChild(f);
+        var ta = f.querySelector('textarea'), cnt = f.querySelector('.q-count');
+        ta.addEventListener('input', function () {
+          var n = ta.value.trim().length;
+          cnt.textContent = n + '자 / ' + MIN + '자 이상';
+          cnt.classList.toggle('ok', n >= MIN);
+        });
       });
       form.appendChild(UI.el('p', 'note', '소감은 이름 없이 화면에 소개될 수 있어요.'));
       var msg = UI.el('div', 'form-msg');
@@ -49,7 +61,7 @@ var Reflect = (function () {
         var answers = [];
         for (var i = 0; i < o.questions.length; i++) {
           var v = document.getElementById('rq' + i).value.trim();
-          if (v.length < 10) { msg.textContent = (i + 1) + '번 소감을 조금 더 써 주세요. (10자 이상)'; document.getElementById('rq' + i).focus(); return; }
+          if (v.length < MIN) { msg.textContent = (i + 1) + '번 답을 조금 더 써 주세요. 지금 ' + v.length + '자, ' + MIN + '자 이상 필요해요.'; document.getElementById('rq' + i).focus(); return; }
           answers.push(v);
         }
         var fields = Object.assign({}, o.fields);
@@ -83,5 +95,18 @@ var Reflect = (function () {
     s.appendChild(box);
   }
 
-  return { show: show };
+  // 다른 화면(예: 2회차 '나의 진짜 수첩')에서 만든 값을 제출하고 마무리 화면으로
+  // o = { ctx, ep, topTitle, closing }, fields = 시트에 넣을 값, btn·msg = 제출 버튼과 안내 칸
+  function send(o, fields, btn, msg) {
+    btn.disabled = true;
+    UI.loading(true, '이야기를 저장하고 있어요');
+    API.submit(o.ctx.id, o.ep, fields).then(function (r) {
+      UI.loading(false);
+      if (r.ok || /이미 제출/.test(r.msg || '')) { noRetry(o); return; }
+      btn.disabled = false;
+      msg.textContent = r.msg;
+    });
+  }
+
+  return { show: show, send: send };
 })();
