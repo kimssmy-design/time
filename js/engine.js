@@ -228,16 +228,8 @@ var UI = (function () {
     ov.appendChild(box);
     ov.appendChild(hint);
     document.body.appendChild(ov);
-    var i = 0, shownAt = 0;
-    function next() {
-      if (Date.now() - shownAt < 700) return;
-      if (i >= beats.length) {
-        document.removeEventListener('keydown', onKey);
-        ov.remove();
-        onDone();
-        return;
-      }
-      var b = beats[i++];
+    var i = 0, shownAt = 0, busy = false;
+    function paint(b) {
       box.className = 'credits-box' + (b.q ? ' is-q' : '') + (b.title ? ' is-title' : '');
       box.innerHTML = '';
       if (b.img) {
@@ -252,6 +244,22 @@ var UI = (function () {
       box.classList.add('in');
       shownAt = Date.now();
       hint.textContent = i >= beats.length ? '화면을 누르면 계속돼요 ▼' : '화면을 누르면 넘어가요 ▼';
+      busy = false;
+    }
+    function next() {
+      if (busy || Date.now() - shownAt < 700) return;
+      if (i >= beats.length) {
+        document.removeEventListener('keydown', onKey);
+        ov.classList.add('closing');
+        setTimeout(function () { ov.remove(); onDone(); }, 350);
+        return;
+      }
+      var b = beats[i++];
+      busy = true;
+      if (!box.childNodes.length) { paint(b); return; }
+      box.classList.remove('in');
+      box.classList.add('out');           // 이전 문장을 천천히 흐리게
+      setTimeout(function () { paint(b); }, 320);
     }
     function onKey(e) { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); next(); } }
     ov.addEventListener('click', next);
