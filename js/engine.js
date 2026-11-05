@@ -222,6 +222,7 @@ var UI = (function () {
    * 너무 빨리 넘기지 않도록 한 장면당 최소 0.7초 머무름
    */
   function credits(beats, onDone) {
+    clear();                       // 아래에 깔린 이전 화면과 키보드 넘김을 먼저 정리 (비쳐 보임 방지)
     var ov = el('div', 'credits');
     var box = el('div', 'credits-box');
     var hint = el('p', 'credits-hint', '화면을 누르면 넘어가요 ▼');
@@ -250,8 +251,10 @@ var UI = (function () {
       if (busy || Date.now() - shownAt < 700) return;
       if (i >= beats.length) {
         document.removeEventListener('keydown', onKey);
-        ov.classList.add('closing');
-        setTimeout(function () { ov.remove(); onDone(); }, 350);
+        busy = true;
+        onDone();                      // 다음 화면을 검은 화면 아래에 먼저 그려 두고
+        ov.classList.add('closing');   // 그다음 검은 화면을 천천히 걷어 냄
+        setTimeout(function () { ov.remove(); }, 400);
         return;
       }
       var b = beats[i++];
