@@ -196,17 +196,17 @@ button:disabled { cursor: not-allowed; }
 
 /* 로딩·알림·창 */
 .loading { position: fixed; inset: 0; background: rgba(30,30,30,.35); display: flex; align-items: center; justify-content: center; z-index: 100; }
-.loading-box { background: var(--paper); color: #2B2B2B; padding: 26px 34px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
+.loading-box { background: var(--paper); color: var(--ink); padding: 26px 34px; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.3); }
 .loading-box p { margin: 10px 0 0; }
-.spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid #BDBDBD; border-top-color: #2B2B2B; border-radius: 50%; animation: spin .9s linear infinite; }
+.spinner { display: inline-block; width: 30px; height: 30px; border: 3px solid var(--line); border-top-color: var(--ink); border-radius: 50%; animation: spin .9s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .toast { position: fixed; left: 50%; bottom: 32px; transform: translateX(-50%); background: var(--btn-bg); color: var(--btn-ink); padding: 12px 20px; z-index: 110; max-width: 90vw; }
 .modal { position: fixed; inset: 0; background: rgba(30,30,30,.4); display: flex; align-items: center; justify-content: center; z-index: 120; padding: 20px; }
-.modal-box { background: var(--paper); color: #2B2B2B; max-width: 520px; width: 100%; padding: 28px; box-shadow: 0 8px 24px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 4px; }
+.modal-box { background: var(--paper); color: var(--ink); max-width: 520px; width: 100%; padding: 28px; box-shadow: 0 8px 24px rgba(0,0,0,.3); display: flex; flex-direction: column; gap: 4px; }
 .modal-box h2 { margin: 0 0 8px; }
 .modal-box p { margin: 0 0 8px; }
 .help-list { margin: 0 0 12px; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 17px; }
-.help-care { font-size: 15px; color: #4A4A4A; border-top: 1px dashed #8A8A8A; padding-top: 10px; }
+.help-care { font-size: 15px; color: var(--ink-2); border-top: 1px dashed var(--line); padding-top: 10px; }
 [hidden] { display: none !important; }
 
 /* 폰 세로 */
